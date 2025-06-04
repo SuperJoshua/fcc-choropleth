@@ -2,6 +2,8 @@
 
 [--> See it live.](https://superjoshua.github.io/fcc-heat-map/)
 
+This was a project required for getting the Data Visualization Certificate from freeCodeCamp. It had to fulfill these "user stories".
+
 - My heat map should have a title with a corresponding id="title".
 - My heat map should have a description with a corresponding id="description".
 - My heat map should have an x-axis with a corresponding id="x-axis".
