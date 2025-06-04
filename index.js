@@ -1,4 +1,4 @@
-"use strict"
+"use strict";
 
 (async function funk() {
    const education_data = await d3.json('https://raw.githubusercontent.com/no-stack-dub-sack/testable-projects-fcc/master/src/data/choropleth_map/for_user_education.json')
