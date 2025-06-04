@@ -1,27 +1,25 @@
-html, body, h1, p {
-   margin: 0;
-   text-align: center;
+html {
    font-size: 10px;
+   text-align: center;
 }
 
-#legend, #tooltip {
-   position: absolute;
-   bottom: 5px;
-   right: 5px;
-   background-color: white;
+body, h1, p{
+   margin: 0;
 }
 
-h1 {
+#title {
    font-size: 3rem;
 }
-
-p {
+#description, #legend, #tooltip {
    font-size: 1.5rem;
 }
-
+#legend, #tooltip {
+   display: inline-block;
+}
+#legend {
+   float: left;
+   padding-left: 1rem;
+}
 #tooltip {
-   display: block;
-   left: 5px;
-   border: 1px dashed black;
-   font-size: 1.5rem;
+   visibility: visible;
 }

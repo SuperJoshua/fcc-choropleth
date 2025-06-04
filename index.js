@@ -1,117 +1,82 @@
 "use strict"
 
-const req = new Request('https://raw.githubusercontent.com/freeCodeCamp/ProjectReferenceData/master/global-temperature.json')
-fetch(req)
-   .then(res => res.json())
-   .then(res => {
-      console.log(res)
-      const dataset = res.monthlyVariance
-      const h1_h = document.querySelector('#title').offsetHeight
-      const pad = 20
-      const pad_left = 60
-      const w = window.innerWidth - h1_h
-      const h = window.innerHeight - h1_h * 3
+(async function funk() {
+   const education_data = await d3.json('https://raw.githubusercontent.com/no-stack-dub-sack/testable-projects-fcc/master/src/data/choropleth_map/for_user_education.json')
+   const county_data = await d3.json('https://raw.githubusercontent.com/no-stack-dub-sack/testable-projects-fcc/master/src/data/choropleth_map/counties.json')
 
-      const year_min = new Date(d3.min(dataset, d => d.year), 0)
-      const year_max = new Date(d3.max(dataset, d => d.year), 0)
-      const x_scale = d3.scaleTime([year_min, year_max], [pad_left, w - pad])
-      const x_axis = d3.axisBottom(x_scale).tickFormat(d3.timeFormat('%Y'))
+   const width = window.innerWidth
+   const height = Math.floor(window.innerHeight * 0.7)
+   const legend_width = Math.floor(width / 3)
 
-      const month_min = new Date(0, d3.min(dataset, d => d.month - 1))
-      const month_max = new Date(0, d3.max(dataset, d => d.month - 1))
-      const y_scale = d3.scaleTime([month_min, month_max], [h - pad, pad])
-      const y_axis = d3.axisLeft(y_scale).tickFormat(d3.timeFormat('%B'))
+   const color_key = d3.scaleThreshold()
+      .domain([10, 20, 30, 40, 50, 60, 70])
+      .range(d3.schemePuRd[8])
 
-      let svg = d3.select('body')
-         .append('svg')
-            .attr('width', w)
-            .attr('height', h)
+   const legend_scale = d3.scaleLinear()
+      .domain([0, 100])
+      .range([0, legend_width])
 
-      svg.append('g')
-         .attr('id', 'x-axis')
-         .attr('transform', `translate(0, ${h - pad})`)
-         .call(x_axis)
+   let legend = d3.select('#legend')
+      .attr('width', legend_width)
+      .attr('height', 20)
 
-      svg.append('g')
-         .attr('id', 'y-axis')
-         .attr('transform', `translate(${pad_left}, 0)`)
-         .call(y_axis)
+   let legend_axis = legend.append('g')
+      .attr('transform', 'translate(0, 2)')
+   legend_axis.selectAll('rect')
+      .data(color_key.range().map(d => {
+         d = color_key.invertExtent(d)
+         if (d[0] == null) d[0] = legend_scale.domain()[0]
+         if (d[1] == null) d[1] = legend_scale.domain()[1]
+         return d
+      }))
+      .enter().append('rect')
+         .attr('x', d => legend_scale(d[0]))
+         .attr('y', 0)
+         .attr('width', d => legend_scale(d[1]) - legend_scale(d[0]))
+         .attr('height', 8)
+         .attr('fill', d => color_key(d[0]))
+   legend_axis.call(d3.axisBottom(legend_scale)
+         .tickValues(color_key.domain()))
 
-      let tooltip = d3.select('body')
-         .append('div')
-            .attr('id', 'tooltip')
-            .style('visibility', 'hidden')
+   let tooltip = d3.select('#tooltip')
 
-      const cell_w = Math.floor((w - pad - pad_left) / (dataset.length / 12))
-      const cell_h = Math.floor((h - pad * 2) / 12)
-      svg.selectAll('rect')
-         .data(dataset)
-         .enter()
-         .append('rect')
-            .attr('class', 'cell')
-            .attr('x', d => x_scale(new Date(d.year, 0)))
-            .attr('data-year', d => d.year)
-            .attr('y', d => y_scale(new Date(0, d.month - 1)) - cell_h)
-            .attr('data-month', d => d.month - 1)
-            .attr('width', cell_w)
-            .attr('height', cell_h)
-            .attr('data-temp', d => d.variance)
-            .attr('fill', d => {
-               switch(true) {
-                  case (d.variance < -4): return '#00f'
-                  case (d.variance < -1): return '#0ff'
-                  case (d.variance < 1): return '#0f0'
-                  case (d.variance < 4): return '#ff0'
-                  case (d.variance < 7): return '#f00'
-                  default: return '#000'
-               }
+   let path = d3.geoPath()
+
+   let chart = d3.select('#chart')
+   chart.append('g')
+      .selectAll('path')
+      .data(topojson.feature(county_data, county_data.objects.counties).features)
+      .enter().append('path')
+         .attr('class', 'county')
+         .attr('data-fips', d => d.id)
+         .attr('data-education', d => {
+            let res = education_data.filter(o => o.fips == d.id)
+            return res[0].bachelorsOrHigher
+         })
+         .attr('fill', d => {
+            let res = education_data.filter(o => o.fips == d.id)
+            return color_key(res[0].bachelorsOrHigher)
+         })
+         .attr('d', path)
+         .on('mouseover', d => {
+            tooltip.style('visibility', 'visible')
+            tooltip.attr('data-education', () => {
+               let res = education_data.filter(o => o.fips == d.id)
+               return res[0].bachelorsOrHigher
             })
-            .on('mouseover', d => {
-               tooltip.style('visibility', 'visible')
-               tooltip.attr('data-year', d.year, 0)
-               tooltip.text(`year: ${d.year} month: ${d.month} variance: ${d.variance}`)
+            tooltip.text(() => {
+               let res = education_data.filter(o => o.fips == d.id)
+               return `${res[0].state} | ${res[0].area_name} | bachelor's degree or greater: ${res[0].bachelorsOrHigher}%`
             })
-            .on('mouseout', () => {
-               tooltip.style('visibility', 'hidden')
-            })
+         })
+         .on('mouseout', () => {
+            tooltip.style('visibility', 'hidden')
+         })
 
-      console.log(svg.selectAll('rect'))
+   chart.append('path')
+      .datum(topojson.feature(county_data, county_data.objects.states), (a, b) => a !== b)
+      .attr('fill', 'none')
+      .attr('stroke', '#fff')
+      .attr('d', path)
 
-      const key_w = 40
-      const key_h = 20
-      let legend = d3.select('body')
-         .append('svg')
-            .attr('width', key_w * 5)
-            .attr('height', key_h)
-            .attr('id', 'legend')
-
-      const key_fills = [
-         ['#00f', '#fff', '(-7, -4)'],
-         ['#0ff', '#000', '(-4, -1)'],
-         ['#0f0', '#000', '(-1, 1)'],
-         ['#ff0', '#000', '(1, 4)'],
-         ['#f00', '#fff', '(4, 7)']]
-
-      legend.selectAll('rect')
-         .data(key_fills)
-         .enter()
-         .append('rect')
-            .attr('x', (d, i) => i * key_w)
-            .attr('y', 0)
-            .attr('width', key_w)
-            .attr('height', key_h)
-            .attr('fill', d => d[0])
-
-      legend.selectAll('text')
-         .data(key_fills)
-         .enter()
-         .append('text')
-            // the math to properly center these is escaping me at the moment
-            .attr('x', (d, i) => i * key_w)
-            .attr('y', key_h / 2)
-            .attr('dx', '0.5em')
-            .attr('dy', '0.35em')
-            .attr('fill', d => d[1])
-            .text(d => d[2])
-   })
-   
+})()
